@@ -24,15 +24,10 @@ def test_skiplist():
 
 
 def test_todolist():
-    todolist = ToDoList(h=3, epsilon=0.1, verbose=True)
+    todolist = ToDoList(h=5, epsilon=0.2, verbose=True)
 
-    todolist.insert(3)
-    todolist.insert(6)
-    todolist.insert(7)
-    todolist.insert(9)
-    todolist.insert(12)
-    todolist.insert(19)
-    todolist.insert(17)
+    for i in range(63):
+        todolist.insert(i)
 
     print(todolist)
 

@@ -1,9 +1,10 @@
 from typing import List, Optional
+from math import inf
 
 
 class TDLNode:
-    def __init__(self, key: int, h: int) -> None:
-        self.key: int = key
+    def __init__(self, key: float, h: int) -> None:
+        self.key: float = key
         self.next_nodes: List[Optional[TDLNode]] = [None] * (h + 1)
 
 
@@ -12,12 +13,11 @@ class ToDoList:
         self.h: int = h  # Height of the ToDoList (Maximum level)
         self.epsilon: float = epsilon  # Arbitrary value
         self.verbose: bool = verbose  # Verbose mode
-        self.sentinel: TDLNode = TDLNode(-1, self.h)  # Header node (dummy node)
+        self.sentinel: TDLNode = TDLNode(-inf, self.h)  # Header node (dummy node)
 
     def __find_predecessors(self, key: int) -> List[Optional[TDLNode]]:
         predecessors: List[Optional[TDLNode]] = [None] * (self.h + 1)
         current: TDLNode = self.sentinel
-
         for lvl in range(self.h + 1):
             # Since at most only one node in two is not promoted to the next level,
             # a single comparison is sufficient to determine the predecessor at each level.
@@ -26,6 +26,11 @@ class ToDoList:
             current = predecessors[lvl]
 
         return predecessors
+
+    def __check_rebuilding(self) -> None:
+        # If there is more than one node in the top level, we partially rebuild the list
+        if self.sentinel.next_nodes[0] is not None and self.sentinel.next_nodes[0].next_nodes[0] is not None:
+            self.__partial_rebuilding()
 
     def __partial_rebuilding(self) -> None:
         def __compute_length(lvl: int) -> int:
@@ -48,16 +53,12 @@ class ToDoList:
         # We then rebuild the lists L0, ..., Lindex-1 in a bottom up fashion;
         # Lindex-1 gets every second element from Lindex (starting with the second),
         # Lindex-2 gets every second element from Lindex-1, and so on down to L0
-        for i in range(index - 1, 0, -1):
+        for i in range(index, 0, -1):
             current: TDLNode = self.sentinel
             while (nxt_btm := current.next_nodes[i]) is not None and (nxt_nxt_btm := nxt_btm.next_nodes[i]) is not None:
                 current.next_nodes[i - 1] = nxt_nxt_btm
                 current = nxt_nxt_btm
             current.next_nodes[i - 1] = None
-
-        if self.verbose:
-            print(self)
-            print(f"Partially rebuilt")
 
     def insert(self, key: int) -> None:
 
@@ -72,21 +73,27 @@ class ToDoList:
             new_node.next_nodes[idx] = predecessors[idx].next_nodes[idx]
             predecessors[idx].next_nodes[idx] = new_node
 
-        # If there is more than one node in the top level, we partially rebuild the list
-        if self.sentinel.next_nodes[0] is not None and self.sentinel.next_nodes[0].next_nodes[0] is not None:
-            self.__partial_rebuilding()
+        self.__check_rebuilding()
 
         if self.verbose:
             print(f"Inserted key {key}")
 
     def delete(self, key: int) -> None:
-        # Find the correct positions where the key should be located
         predecessors: List[Optional[TDLNode]] = self.__find_predecessors(key)
 
+        # The one to be promoted in place of the element to be deleted
+        substitute = predecessors[self.h].next_nodes[self.h].next_nodes[self.h] \
+            if predecessors[self.h].next_nodes[self.h] is not None \
+            else None
+
         for i in range(self.h + 1):
-            next_node: Optional[TDLNode] = predecessors[i].next_nodes[i]
-            if next_node is not None and next_node.key == key:
-                predecessors[i].next_nodes[i] = next_node.next_nodes[i]
+            if (target := predecessors[i].next_nodes[i]) is not None and target.key == key:
+                predecessors[i].next_nodes[i] = substitute
+                successor = target.next_nodes[i]
+                if successor is not None and successor.key != substitute.key:
+                    substitute.next_nodes[i] = successor
+
+        self.__check_rebuilding()
 
         if self.verbose:
             print(f"Deleted key {key}")
@@ -103,7 +110,7 @@ class ToDoList:
             return False
 
     def __str__(self) -> str:
-        output: str = "\nSkip List:"
+        output: str = "\nSkip List:\n"
         for i in range(self.h + 1):
             current: Optional[TDLNode] = self.sentinel.next_nodes[i]
             level_str: str = f"Level {i}: "
