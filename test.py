@@ -14,7 +14,7 @@ if __name__ == "__main__":
     skiplist.insert(17)
 
     # Display the skip list
-    skiplist.display()
+    print(skiplist)
 
     # Search for elements
     skiplist.search(6)
@@ -23,4 +23,4 @@ if __name__ == "__main__":
     # Delete elements and display again
     skiplist.delete(3)
     skiplist.delete(7)
-    skiplist.display()
+    print(skiplist)

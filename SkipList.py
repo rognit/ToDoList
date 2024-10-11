@@ -95,14 +95,13 @@ class SkipList:
         else:
             print(f"Value {value} not found")
 
-    def display(self):
-        print("\nSkip List:")
+    def __str__(self):
+        output = "\nSkip List:"
         for i in range(self.level, -1, -1):
             current = self.header.forward[i]
-            level_str = f"Level {i}: "
+            output += f"Level {i}: "
             while current is not None:
-                level_str += f"{current.value} -> "
+                output += f"{current.value} -> "
                 current = current.forward[i]
-            level_str += "None"
-            print(level_str)
-
+            output += "None\n"
+        return output
