@@ -42,9 +42,9 @@ class ToDoList:
             return length
 
         def __compute_special_index() -> int:
-            for idx in range(self.h + 1):
-                if __compute_length(idx) <= (2 - self.epsilon) ** idx:
-                    return idx
+            for lvl in range(self.h + 1):
+                if __compute_length(lvl) <= (2 - self.epsilon) ** lvl:
+                    return lvl
             return self.h
 
         # We find the smallest index i such that |Lindex| < (2 - epsilon) ** index
@@ -53,12 +53,12 @@ class ToDoList:
         # We then rebuild the lists L0, ..., Lindex-1 in a bottom up fashion;
         # Lindex-1 gets every second element from Lindex (starting with the second),
         # Lindex-2 gets every second element from Lindex-1, and so on down to L0
-        for i in range(index, 0, -1):
+        for lvl in range(index, 0, -1):
             current: TDLNode = self.sentinel
-            while (nxt_btm := current.next_nodes[i]) is not None and (nxt_nxt_btm := nxt_btm.next_nodes[i]) is not None:
-                current.next_nodes[i - 1] = nxt_nxt_btm
-                current = nxt_nxt_btm
-            current.next_nodes[i - 1] = None
+            while (nxt := current.next_nodes[lvl]) is not None and (nxt_nxt := nxt.next_nodes[lvl]) is not None:
+                current.next_nodes[lvl - 1] = nxt_nxt
+                current = nxt_nxt
+            current.next_nodes[lvl - 1] = None
 
     def insert(self, key: int) -> None:
 
@@ -69,9 +69,9 @@ class ToDoList:
         new_node: TDLNode = TDLNode(key, self.h)
 
         # We add the new node after each predecessor
-        for idx in range(self.h + 1):
-            new_node.next_nodes[idx] = predecessors[idx].next_nodes[idx]
-            predecessors[idx].next_nodes[idx] = new_node
+        for lvl in range(self.h + 1):
+            new_node.next_nodes[lvl] = predecessors[lvl].next_nodes[lvl]
+            predecessors[lvl].next_nodes[lvl] = new_node
 
         self.__check_rebuilding()
 
@@ -86,12 +86,12 @@ class ToDoList:
             if predecessors[self.h].next_nodes[self.h] is not None \
             else None
 
-        for i in range(self.h + 1):
-            if (target := predecessors[i].next_nodes[i]) is not None and target.key == key:
-                predecessors[i].next_nodes[i] = substitute
-                successor = target.next_nodes[i]
+        for lvl in range(self.h + 1):
+            if (target := predecessors[lvl].next_nodes[lvl]) is not None and target.key == key:
+                predecessors[lvl].next_nodes[lvl] = substitute
+                successor = target.next_nodes[lvl]
                 if successor is not None and successor.key != substitute.key:
-                    substitute.next_nodes[i] = successor
+                    substitute.next_nodes[lvl] = successor
 
         self.__check_rebuilding()
 
@@ -111,12 +111,12 @@ class ToDoList:
 
     def __str__(self) -> str:
         output: str = "\nSkip List:\n"
-        for i in range(self.h + 1):
-            current: Optional[TDLNode] = self.sentinel.next_nodes[i]
-            level_str: str = f"Level {i}: "
+        for lvl in range(self.h + 1):
+            current: Optional[TDLNode] = self.sentinel.next_nodes[lvl]
+            level_str: str = f"Level {lvl}: "
             while current is not None:
                 level_str += f"{current.key} -> "
-                current = current.next_nodes[i]
+                current = current.next_nodes[lvl]
             level_str += "None"
             output += level_str + "\n"
         return output
