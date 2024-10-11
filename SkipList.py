@@ -1,107 +1,109 @@
-
-import random
+from random import random
+from typing import List, Optional
 
 class SLNode:
-    def __init__(self, value, level):
-        self.value = value
-        # Forward references (pointers) to the next nodes at each level
-        self.forward = [None] * (level + 1)
+    def __init__(self, key: int, level: int) -> None:
+        self.key: int = key
+        self.next_nodes: List[Optional[SLNode]] = [None] * (level + 1)
 
 class SkipList:
-    def __init__(self, max_level, p):
-        self.max_level = max_level
-        self.p = p  # Probability to decide the level for each node
-        self.header = self.create_node(self.max_level, -1)  # Header node (dummy node)
-        self.level = 0  # Current maximum level in the list
+    def __init__(self, max_level: int, p: float, verbose: bool = False) -> None:
+        self.max_level_limit: int = max_level
+        self.p: float = p  # Promotion probability
+        self.verbose: bool = verbose
+        self.sentinel: SLNode = SLNode(-1, self.max_level_limit)  # Header node (dummy node)
+        self.current_level_number: int = 0  # Current level number in the SkipList
 
-    # Utility function to create a new node
-    def create_node(self, level, value):
-        return SLNode(value, level)
-
-    # Random level generator based on the probability
-    def random_level(self):
-        lvl = 0
-        while random.random() < self.p and lvl < self.max_level:
+    def __random_promotion(self) -> int:
+        lvl: int = 0
+        while random() < self.p and lvl < self.max_level_limit:
             lvl += 1
         return lvl
 
-    # Insertion of an element into the skip list
-    def insert(self, value):
-        update = [None] * (self.max_level + 1)
-        current = self.header
+    def __search_previous_nodes(self, key: int) -> List[Optional[SLNode]]:
+        """Search for all the previous nodes of the key to be inserted"""
+        previous_nodes: List[Optional[SLNode]] = [None] * (self.max_level_limit + 1)
+        current: SLNode = self.sentinel
 
         # Move forward to find the correct insertion position
-        for i in range(self.level, -1, -1):
-            while current.forward[i] and current.forward[i].value < value:
-                current = current.forward[i]
-            update[i] = current
+        for i in range(self.current_level_number, -1, -1):
+            while current.next_nodes[i] and current.next_nodes[i].key < key:
+                current = current.next_nodes[i]
+            previous_nodes[i] = current
 
-        # Generate a random level for the new node
-        new_level = self.random_level()
+        return previous_nodes
+
+    def insert(self, key: int) -> None:
+        # Promotion of the new node
+        new_level: int = self.__random_promotion()
+
+        # Find the correct positions to insert the new node
+        previous_nodes: List[Optional[SLNode]] = self.__search_previous_nodes(key)
 
         # If new level is higher than the current list level, update header links
-        if new_level > self.level:
-            for i in range(self.level + 1, new_level + 1):
-                update[i] = self.header
-            self.level = new_level
+        if new_level > self.current_level_number:
+            for i in range(self.current_level_number + 1, new_level + 1):
+                previous_nodes[i] = self.sentinel
+            self.current_level_number = new_level
 
-        # Create the new node and adjust the forward references
-        new_node = self.create_node(new_level, value)
+        # Create the new node and adjust the next node references
+        new_node: SLNode = SLNode(key, new_level)
         for i in range(new_level + 1):
-            new_node.forward[i] = update[i].forward[i]
-            update[i].forward[i] = new_node
+            new_node.next_nodes[i] = previous_nodes[i].next_nodes[i]
+            previous_nodes[i].next_nodes[i] = new_node
 
-        print(f"Inserted value {value} at level {new_level}")
+        if self.verbose:
+            print(f"Inserted key {key} at level {new_level}")
 
-    # Searching for an element in the skip list
-    def search(self, value):
-        current = self.header
-        for i in range(self.level, -1, -1):
-            while current.forward[i] and current.forward[i].value < value:
-                current = current.forward[i]
-        current = current.forward[0]
-        if current and current.value == value:
-            print(f"Found value {value}")
-            return True
-        else:
-            print(f"Value {value} not found")
-            return False
-
-    # Deletion of an element from the skip list
-    def delete(self, value):
-        update = [None] * (self.max_level + 1)
-        current = self.header
-
-        # Move forward to find the node to delete
-        for i in range(self.level, -1, -1):
-            while current.forward[i] and current.forward[i].value < value:
-                current = current.forward[i]
-            update[i] = current
-
-        current = current.forward[0]
-
-        if current and current.value == value:
-            # Update forward pointers
-            for i in range(self.level + 1):
-                if update[i].forward[i] != current:
+    def search(self, key: int) -> bool:
+        current: SLNode = self.sentinel
+        for lvl in range(self.current_level_number, -1, -1):
+            while True:
+                next_node: Optional[SLNode] = current.next_nodes[lvl]
+                if next_node is None or next_node.key >= key:
                     break
-                update[i].forward[i] = current.forward[i]
+                current = next_node
+            if next_node is not None and next_node.key == key:
+                if self.verbose:
+                    print(f"Found key {key} at level {lvl}")
+                return True
+
+        if self.verbose:
+            print(f"Key {key} not found")
+        return False
+
+    def delete(self, key: int) -> None:
+        # Find the correct positions where the key should be located
+        previous_nodes: List[Optional[SLNode]] = self.__search_previous_nodes(key)
+
+        # Retrieve the candidate node to be deleted
+        candidate_node: Optional[SLNode] = previous_nodes[0].next_nodes[0] if previous_nodes and previous_nodes[0].next_nodes else None
+
+        if candidate_node and candidate_node.key == key:  # If the candidate node has the right key
+            # Update 'next nodes' pointers
+            for i in range(self.current_level_number + 1):
+                if previous_nodes[i].next_nodes[i] != candidate_node:
+                    break
+                previous_nodes[i].next_nodes[i] = candidate_node.next_nodes[i]
 
             # Adjust the level of the skip list if needed
-            while self.level > 0 and self.header.forward[self.level] is None:
-                self.level -= 1
+            while self.current_level_number > 0 and self.sentinel.next_nodes[self.current_level_number] is None:
+                self.current_level_number -= 1
 
-            print(f"Deleted value {value}")
+            if self.verbose:
+                print(f"Deleted key {key}")
         else:
-            print(f"Value {value} not found")
+            if self.verbose:
+                print(f"key {key} not found")
 
-    def __str__(self):
+    def __str__(self) -> str:
         output = "\nSkip List:"
-        for i in range(self.level, -1, -1):
-            current = self.header.forward[i]
-            output += f"Level {i}: "
+        for i in range(self.current_level_number, -1, -1):
+            current: Optional[SLNode] = self.sentinel.next_nodes[i]
+            level_str = f"Level {i}: "
             while current is not None:
-                output += f"{current.value} -> "
-                current = current.forward[i]
-            output += "None\n"
+                level_str += f"{current.key} -> "
+                current = current.next_nodes[i]
+            level_str += "None"
+            output += level_str + "\n"
         return output
