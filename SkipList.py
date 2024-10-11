@@ -95,8 +95,6 @@ class SkipList:
         else:
             print(f"Value {value} not found")
 
-    def _
-
     def display(self):
         print("\nSkip List:")
         for i in range(self.level, -1, -1):
