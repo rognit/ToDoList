@@ -180,6 +180,8 @@ class WorkingToDoList:
             new_node.next_nodes[lvl] = predecessors[lvl].next_nodes[lvl]
             predecessors[lvl].next_nodes[lvl] = new_node
 
+        self.__partial_rebuilding()
+
 
 
 
