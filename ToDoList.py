@@ -21,8 +21,7 @@ class ToDoList:
         for lvl in range(self.h + 1):
             # Since at most only one node in two is not promoted to the next level,
             # a single comparison is sufficient to determine the predecessor at each level.
-            predecessors[lvl] = current if current.next_nodes[lvl] is None or current.next_nodes[lvl].key >= key \
-                else current.next_nodes[lvl]
+            predecessors[lvl] = current if (nxt := current.next_nodes[lvl]) is None or nxt.key >= key else nxt
             current = predecessors[lvl]
 
         return predecessors

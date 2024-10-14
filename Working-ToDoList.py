@@ -1,26 +1,29 @@
+import math
 from typing import List, Optional
 from math import inf
+import numpy as np
 
 
 class WTDLNode:
     def __init__(self, key: float, h: int) -> None:
         self.key: float = key
         self.next_nodes: List[Optional[WTDLNode]] = [None] * (h + 1)
+        self.label: Optional[int] = None  # Label of the node (usefully for partial rebuilding)
 
 
 class DLLNode:
-    def __init__(self, key):
-        self.key = key  # Key of the node
-        self.prev = None  # Pointer to the previous node
-        self.next = None  # Pointer to the next node
+    def __init__(self, node: Optional[WTDLNode]) -> None:
+        self.node: Optional[WTDLNode] = node  # WTDLNode ou None
+        self.prev: Optional[WTDLNode] = None  # Pointer to the previous node
+        self.next: Optional[WTDLNode] = None  # Pointer to the next node
 
 
 class DoublyLinkedList:
     def __init__(self):
         self.tail = None  # Pointer to the last node
 
-    def append(self, key):
-        new_node = DLLNode(key)
+    def append(self, node: WTDLNode) -> None:
+        new_node = DLLNode(node)
         if self.tail is not None:  # If the list is not empty
             self.tail.next = new_node
             new_node.prev = self.tail
@@ -41,8 +44,7 @@ class WorkingToDoList:
         for lvl in range(self.h + 1):
             # Since at most only one node in two is not promoted to the next level,
             # a single comparison is sufficient to determine the predecessor at each level.
-            predecessors[lvl] = current if current.next_nodes[lvl] is None or current.next_nodes[lvl].key >= key \
-                else current.next_nodes[lvl]
+            predecessors[lvl] = current if (nxt := current.next_nodes[lvl]) is None or nxt.key >= key else nxt
             current = predecessors[lvl]
 
         return predecessors
@@ -63,22 +65,52 @@ class WorkingToDoList:
     def __partial_rebuilding(self) -> None:
         def compute_special_index() -> int:
             for lvl in range(self.h + 1):
-                if self.__compute_length(lvl) <= (2 - self.epsilon) ** lvl:
+                if self.__compute_length(lvl) <= (2 - self.epsilon / 2) ** lvl:
                     return lvl
             return self.h
 
-        # We find the smallest index i such that |Lindex| < (2 - epsilon) ** index
         index: int = compute_special_index()
 
-        # We then rebuild the lists L0, ..., Lindex-1 in a bottom up fashion;
-        # Lindex-1 gets every second element from Lindex (starting with the second),
-        # Lindex-2 gets every second element from Lindex-1, and so on down to L0
+        # Labelling_nodes
+        dll_node: DLLNode = self.Q.tail
+        for i in range(math.floor((2 - self.epsilon / 2) ** (index - 1))):
+            if not dll_node:
+                break
+            if not dll_node.node.label:
+                dll_node.node.label = i
+            dll_node = dll_node.prev
+
+
+
+
+
         for lvl in range(index, 0, -1):
             current: WTDLNode = self.sentinel
-            while (nxt := current.next_nodes[lvl]) is not None and (nxt_nxt := nxt.next_nodes[lvl]) is not None:
-                current.next_nodes[lvl - 1] = nxt_nxt
-                current = nxt_nxt
+            # We walk through Lj and take any value whose label (in Q) is defined and is at most (2 - epsilon)^j
+            # as well as every “second value” as needed to ensure that Property 3 holds.
+            while nxt := current.next_nodes[lvl]:
+                if nxt.label and nxt.label <= (2 - self.epsilon) ** lvl:
+                    current.next_nodes[lvl - 1] = nxt
+                    current = nxt
+                elif nxt_nxt := nxt.next_nodes[lvl]:
+                    nxt.label = None
+                    current.next_nodes[lvl - 1] = nxt_nxt
+                    current = nxt_nxt
             current.next_nodes[lvl - 1] = None
+
+        current: WTDLNode = self.sentinel
+        while current.next_nodes[0]:
+            current = current.next_nodes[0]
+            current.label = None
+
+        # Just to be sure and because it's written in the paper
+        dll_node: DLLNode = self.Q.tail
+        for i in range(math.floor((2 - self.epsilon / 2) ** (index - 1))):
+            if not dll_node:
+                break
+            dll_node.node.label = None
+            dll_node = dll_node.prev
+
 
     def insert(self, key: int) -> None:
 
@@ -118,13 +150,38 @@ class WorkingToDoList:
             print(f"Deleted key {key}")
 
     def search(self, key: int) -> bool:
-        predecessors: List[Optional[WTDLNode]] = self.__find_predecessors(key)
-        if (candidate := predecessors[self.h].next_nodes[self.h]) is not None and candidate.key == key:
+        def is_perfect_square(n: int) -> bool:
+            return math.isqrt(n) ** 2 == n
+
+        current: WTDLNode = self.sentinel
+        predecessors: List[Optional[WTDLNode]] = [None] * (self.h + 1)
+
+        for lvl in range(self.h + 1):
+            if successor := current.next_nodes[lvl] is not None:
+                if is_perfect_square(lvl) and successor.key == key:
+                    print(f"Found key {key} at level {lvl}") if self.verbose else None
+                    key_level: int = lvl
+                    break
+                predecessors[lvl] = current if (nxt := current.next_nodes[lvl]) is None or nxt.key >= key else nxt
+                current = predecessors[lvl]
+
+        if (candidate := current.next_nodes[self.h]) is not None and candidate.key == key:
             print(f"Found key {key}") if self.verbose else None
-            return True
+            key_level : int = self.h
         else:
             print(f"Key {key} not found") if self.verbose else None
             return False
+
+        self.Q.append(candidate)
+        new_node: WTDLNode = WTDLNode(key, self.h)
+
+        # We add the key to every level from 0 to key_level - 1
+        for lvl in range(key_level):
+            new_node.next_nodes[lvl] = predecessors[lvl].next_nodes[lvl]
+            predecessors[lvl].next_nodes[lvl] = new_node
+
+
+
 
     def __str__(self) -> str:
         output: str = "\nSkip List:\n"
