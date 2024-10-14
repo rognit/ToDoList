@@ -26,8 +26,7 @@ class ToDoList:
         for lvl in range(self.h + 1):
             # Since at most only one node in two is not promoted to the next level,
             # a single comparison is sufficient to determine the predecessor at each level.
-            predecessors[lvl] = current if current.next_nodes[lvl] is None or current.next_nodes[lvl].key >= key \
-                else current.next_nodes[lvl]
+            predecessors[lvl] = current if (nxt := current.next_nodes[lvl]) is None or nxt.key >= key else nxt
             current = predecessors[lvl]
 
         return predecessors
@@ -80,8 +79,7 @@ class ToDoList:
 
         self.__check_rebuilding()
 
-        if self.verbose:
-            print(f"Inserted key {key}")
+        print(f"Inserted key {key}") if self.verbose else None
 
     def delete(self, key: int) -> None:
         predecessors: List[Optional[TDLNode]] = self.__find_predecessors(key)
@@ -100,18 +98,15 @@ class ToDoList:
 
         self.__check_rebuilding()
 
-        if self.verbose:
-            print(f"Deleted key {key}")
+        print(f"Deleted key {key}") if self.verbose else None
 
     def search(self, key: int) -> bool:
         predecessors: List[Optional[TDLNode]] = self.__find_predecessors(key)
         if predecessors[self.h].next_nodes[self.h] is not None and predecessors[self.h].next_nodes[self.h].key == key:
-            if self.verbose:
-                print(f"Found key {key}")
+            print(f"Found key {key}") if self.verbose else None
             return True
         else:
-            if self.verbose:
-                print(f"Key {key} not found")
+            print(f"Key {key} not found") if self.verbose else None
             return False
 
     def __str__(self) -> str:
